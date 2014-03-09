@@ -38,14 +38,16 @@ def get_agent_(attr,agent_div):
     return None
 
 def get_agent_phone_number(agent_profile_url):
-  
-  BROWSER.get(agent_profile_url)
-  ab_contact_elem = BROWSER.find_element_by_class_name("ab-contact-number")
-  elem_soup = BeautifulSoup(ab_contact_elem.get_attribute("innerHTML"))
-  link_id = elem_soup.find("a").attrs["id"]
-  phone_number_elem = BROWSER.find_element_by_id(link_id)
-  phone_number_elem.click()
-  return phone_number_elem.text
+  try:
+    BROWSER.get(agent_profile_url)
+    ab_contact_elem = BROWSER.find_element_by_class_name("ab-contact-number")
+    elem_soup = BeautifulSoup(ab_contact_elem.get_attribute("innerHTML"))
+    link_id = elem_soup.find("a").attrs["id"]
+    phone_number_elem = BROWSER.find_element_by_id(link_id)
+    phone_number_elem.click()
+    return phone_number_elem.text
+  except:
+    return "-"
 
 def get_char_from_args():
   try:
@@ -99,7 +101,6 @@ while(PAGE_NUMBER <= last_page):
   write_agent_lists_to_csv(url)
   PAGE_NUMBER += 1
   
-   	
 BROWSER.quit()
   
 
