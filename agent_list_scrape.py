@@ -7,17 +7,11 @@
 
 from bs4 import BeautifulSoup
 from urllib2 import urlopen
+from selenium import webdriver
 import unicodecsv as csv
 import datetime
 import sys
 import re
-
-
-
-
-
-
-  
 
 def write_to_csv(file_name,arr_objs):
   with open(file_name, 'wb') as csvfile:
@@ -43,17 +37,15 @@ def get_agent_(attr,agent_div):
   except AttributeError:
     return None
 
-def get_agent_details_from(agent_div):
-  agent_name = get_agent_("name",agent_div)
-  agent_job_title = get_agent_("jobTitle",agent_div)
-  agent_company = get_agent_("worksFor",agent_div)
-  agent_profile_link = get_agent_profile_link(agent_div)
-  return [agent_name,agent_job_title,agent_company,agent_profile_link]
- 
-def write_agent_list_to_csv(soup):
-  agents_div = soup.find_all(class_="ca-sr-item")
-  for agents_div_index,agent_div in enumerate(agents_div):
-    AGENT_LISTS.append(get_agent_details_from(agent_div))
+def get_agent_phone_number(agent_profile_url):
+  
+  BROWSER.get(agent_profile_url)
+  ab_contact_elem = BROWSER.find_element_by_class_name("ab-contact-number")
+  elem_soup = BeautifulSoup(ab_contact_elem.get_attribute("innerHTML"))
+  link_id = elem_soup.find("a").attrs["id"]
+  phone_number_elem = BROWSER.find_element_by_id(link_id)
+  phone_number_elem.click()
+  return phone_number_elem.text
 
 def get_char_from_args():
   try:
@@ -72,14 +64,22 @@ def get_last_page_of_agent_lists(url):
   last_page_number = re.search("page(\d+)", last_page_url).group(1)
   return int(last_page_number)
 
+def get_agent_details_from(agent_div):
+  agent_name = get_agent_("name",agent_div)
+  agent_job_title = get_agent_("jobTitle",agent_div)
+  agent_company = get_agent_("worksFor",agent_div)
+  agent_profile_link = get_agent_profile_link(agent_div)
+  agent_phone_number = get_agent_phone_number(agent_profile_link)
+  return [agent_name,agent_job_title,agent_company,agent_profile_link,agent_phone_number]
 
-def get_agent_lists(url):
+
+def write_agent_lists_to_csv(url):
   html = urlopen(url).read()
   soup = BeautifulSoup(html)
-  write_agent_list_to_csv(soup)
+  agents_div = soup.find_all(class_="ca-sr-item")
+  for agents_div_index,agent_div in enumerate(agents_div):
+    AGENT_LISTS.append(get_agent_details_from(agent_div))
   write_to_csv("agent_list_{char}.csv".format(char=FIRST_NAME_CHAR), AGENT_LISTS)    
-
-
 
 
 
@@ -87,21 +87,20 @@ AGENT_LISTS = []
 BASE_URL = "http://www.stproperty.sg"
 FIRST_NAME_CHAR = get_char_from_args() or "a"
 PAGE_NUMBER = 1
+BROWSER = webdriver.Firefox()
 
 print "Searching by First Name begining with",FIRST_NAME_CHAR,"in ascending order"
-
 url = get_url_for_(FIRST_NAME_CHAR,PAGE_NUMBER)
 last_page = get_last_page_of_agent_lists(url) or 1
-
 
 while(PAGE_NUMBER <= last_page):
   print "Scraping page {current_page} of {last_page}".format(current_page=PAGE_NUMBER,last_page=last_page)
   url = get_url_for_(FIRST_NAME_CHAR,PAGE_NUMBER)
-  get_agent_lists(url)
+  write_agent_lists_to_csv(url)
   PAGE_NUMBER += 1
   
    	
- 
+BROWSER.quit()
   
 
    
