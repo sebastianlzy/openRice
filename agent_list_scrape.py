@@ -13,6 +13,32 @@ import datetime
 import sys
 import re
 
+
+AGENT_LISTS = []
+BASE_URL = "http://www.stproperty.sg"
+PAGE_NUMBER = 1
+FIRST_NAME_CHAR =  "a"
+BROWSER = webdriver.Firefox()
+
+def main():
+  
+  global FIRST_NAME_CHAR
+  global PAGE_NUMBER
+  FIRST_NAME_CHAR = get_char_from_args()
+
+  print "Searching by First Name begining with",FIRST_NAME_CHAR,"in ascending order"
+  url = get_url_for_(FIRST_NAME_CHAR,PAGE_NUMBER)
+  last_page = get_last_page_of_agent_lists(url) or 1
+
+  while(PAGE_NUMBER <= last_page):
+   print "Scraping page {current_page} of {last_page}".format(current_page=PAGE_NUMBER,last_page=last_page)
+   url = get_url_for_(FIRST_NAME_CHAR,PAGE_NUMBER)
+   write_agent_lists_to_csv(url)
+   PAGE_NUMBER += 1
+  
+  BROWSER.quit()
+
+
 def write_to_csv(file_name,arr_objs):
   with open(file_name, 'wb') as csvfile:
     csv_writer = csv.writer(csvfile,encoding="utf-8")
@@ -84,33 +110,8 @@ def write_agent_lists_to_csv(url):
   write_to_csv("agent_list_{char}.csv".format(char=FIRST_NAME_CHAR), AGENT_LISTS)    
 
 
-
-AGENT_LISTS = []
-BASE_URL = "http://www.stproperty.sg"
-FIRST_NAME_CHAR = get_char_from_args() or "a"
-PAGE_NUMBER = 1
-BROWSER = webdriver.Firefox()
-
-print "Searching by First Name begining with",FIRST_NAME_CHAR,"in ascending order"
-url = get_url_for_(FIRST_NAME_CHAR,PAGE_NUMBER)
-last_page = get_last_page_of_agent_lists(url) or 1
-
-while(PAGE_NUMBER <= last_page):
-  print "Scraping page {current_page} of {last_page}".format(current_page=PAGE_NUMBER,last_page=last_page)
-  url = get_url_for_(FIRST_NAME_CHAR,PAGE_NUMBER)
-  write_agent_lists_to_csv(url)
-  PAGE_NUMBER += 1
-  
-BROWSER.quit()
-  
-
-   
-  
-  
-  
-
-
-
+if  __name__ =='__main__':
+  main()
 
 
 
