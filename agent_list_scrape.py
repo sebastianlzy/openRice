@@ -13,28 +13,30 @@ import datetime
 import sys
 import re
 
-
-AGENT_LISTS = []
 BASE_URL = "http://www.stproperty.sg"
-PAGE_NUMBER = 1
-FIRST_NAME_CHAR =  "a"
+ 
 BROWSER = webdriver.Firefox()
 
 def main():
   
-  global FIRST_NAME_CHAR
-  global PAGE_NUMBER
-  FIRST_NAME_CHAR = get_char_from_args()
+  
 
-  print "Searching by First Name begining with",FIRST_NAME_CHAR,"in ascending order"
-  url = get_url_for_(FIRST_NAME_CHAR,PAGE_NUMBER)
-  last_page = get_last_page_of_agent_lists(url) or 1
+  first_name_chars = get_char_from_args() or ["a"]
+  
+  print first_name_chars
 
-  while(PAGE_NUMBER <= last_page):
-   print "Scraping page {current_page} of {last_page}".format(current_page=PAGE_NUMBER,last_page=last_page)
-   url = get_url_for_(FIRST_NAME_CHAR,PAGE_NUMBER)
-   write_agent_lists_to_csv(url)
-   PAGE_NUMBER += 1
+  for first_name_char_index,first_name_char in enumerate(first_name_chars):
+    print "Searching by First Name begining with",first_name_char,"in ascending order"
+    current_page_number = 1
+
+    url = get_url_for_(first_name_char,current_page_number)
+    last_page = get_last_page_of_agent_lists(url) or 1
+
+    while(current_page_number <= last_page):
+      print "Scraping page {current_page} of {last_page}".format(current_page=current_page_number,last_page=last_page)
+      url = get_url_for_(first_name_char,current_page_number)
+      write_agent_lists_to_csv(url,first_name_char)
+      current_page_number += 1
   
   BROWSER.quit()
 
@@ -49,8 +51,8 @@ def write_to_csv(file_name,arr_objs):
         print "cant write ",arr_obj," into file"   
       
 
-def get_url_for_(first_name_char,page_number):
-  return BASE_URL + "/property-agent/search-by-firstname/first-name-{char}/page{number}/size-50/sort-firstname-asc" .format(char=first_name_char,number=page_number)
+def get_url_for_(first_name_char,current_page_number):
+  return BASE_URL + "/property-agent/search-by-firstname/first-name-{char}/page{number}/size-50/sort-firstname-asc" .format(char=first_name_char,number=current_page_number)
    
 
 def get_agent_profile_link(agent_div):
@@ -77,8 +79,9 @@ def get_agent_phone_number(agent_profile_url):
 
 def get_char_from_args():
   try:
-    args = sys.argv
-    return args[1]
+    args = sys.argv   
+    del args[0]
+    return args
   except IndexError:
     print "No arguments were passed"
     return None
@@ -89,8 +92,16 @@ def get_last_page_of_agent_lists(url):
   pages_div = soup.find_all(class_="page")
   last_page_div = pages_div[len(pages_div)-1]
   last_page_url = last_page_div.find("a").attrs["href"] 
-  last_page_number = re.search("page(\d+)", last_page_url).group(1)
-  return int(last_page_number)
+  last_current_page_number = re.search("page(\d+)", last_page_url).group(1)
+  return int(last_current_page_number)
+
+def get_agent_id_from(agent_profile_link):
+  try:
+    re_expression = re.compile('\d+')
+    agent_id = re_expression.findall(agent_profile_link)[-1]
+  except :
+    return "Nil"
+  return agent_id
 
 def get_agent_details_from(agent_div):
   agent_name = get_agent_("name",agent_div)
@@ -98,16 +109,18 @@ def get_agent_details_from(agent_div):
   agent_company = get_agent_("worksFor",agent_div)
   agent_profile_link = get_agent_profile_link(agent_div)
   agent_phone_number = get_agent_phone_number(agent_profile_link)
-  return [agent_name,agent_job_title,agent_company,agent_profile_link,agent_phone_number]
+  agent_id = get_agent_id_from(agent_profile_link)
+  return [agent_id, agent_name,agent_job_title,agent_company,agent_profile_link,agent_phone_number]
 
 
-def write_agent_lists_to_csv(url):
+def write_agent_lists_to_csv(url,first_name_char):
   html = urlopen(url).read()
   soup = BeautifulSoup(html)
+  agent_lists = []
   agents_div = soup.find_all(class_="ca-sr-item")
   for agents_div_index,agent_div in enumerate(agents_div):
-    AGENT_LISTS.append(get_agent_details_from(agent_div))
-  write_to_csv("agent_list_{char}.csv".format(char=FIRST_NAME_CHAR), AGENT_LISTS)    
+    agent_lists.append(get_agent_details_from(agent_div))
+  write_to_csv("agent_list_{char}.csv".format(char=first_name_char), agent_lists)    
 
 
 if  __name__ =='__main__':
